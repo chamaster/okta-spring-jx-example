@@ -6,6 +6,10 @@ pipeline {
       ORG               = 'chamaster'
       APP_NAME          = 'okta-spring-jx-example'
       CHARTMUSEUM_CREDS = credentials('jenkins-x-chartmuseum')
+      OKTA_CLIENT_TOKEN = credentials('OKTA_CLIENT_TOKEN')
+      OKTA_APP_ID       = credentials('OKTA_APP_ID')
+      E2E_USERNAME      = credentials('E2E_USERNAME')
+      E2E_PASSWORD      = credentials('E2E_PASSWORD')
     }
     stages {
       stage('CI Build and push snapshot') {
@@ -19,17 +23,15 @@ pipeline {
         }
         steps {
           container('maven') {
-            sh "mvn versions:set -DnewVersion=$PREVIEW_VERSION"
-            sh "mvn install"
-            sh 'export VERSION=$PREVIEW_VERSION && skaffold build -f skaffold.yaml'
-
-
-            sh "jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION"
+            dir ('./holdings-api') {
+                 sh "mvn versions:set -DnewVersion=$PREVIEW_VERSION"
+                 sh "mvn install -Pprod"
+               }
           }
 
           dir ('./charts/preview') {
            container('maven') {
-             sh "make preview"
+             sh "make OKTA_CLIENT_TOKEN=\$OKTA_CLIENT_TOKEN preview"
              sh "jx preview --app $APP_NAME --dir ../.."
            }
           }
@@ -54,6 +56,12 @@ pipeline {
             container('maven') {
               sh "make tag"
             }
+          }
+          dir ('./holdings-api') {
+            sh "mvn versions:set -DnewVersion=\$(cat ../VERSION)"
+          }
+          dir ('./holdings-api') {
+            sh "mvn clean deploy -Pprod"
           }
           container('maven') {
             sh 'mvn clean deploy'

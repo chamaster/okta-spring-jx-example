@@ -1,0 +1,44 @@
+os:
+- linux
+services:
+- docker
+language: node_js
+node_js:
+- 8.10.0
+addons:
+  apt:
+    sources:
+    - google-chrome
+    packages:
+    - google-chrome-stable
+jdk:
+- oraclejdk8
+sudo: false
+cache:
+  directories:
+  - crypto-pwa/node_modules
+before_install:
+- jdk_switcher use oraclejdk8
+- java -version
+- export CHROME_BIN=/usr/bin/google-chrome
+- export DISPLAY=:99.0
+- sh -e /etc/init.d/xvfb start
+- npm install -g ionic@3.20.0 codecov
+- cd crypto-pwa && npm install
+script:
+- cd $TRAVIS_BUILD_DIR
+- chmod +x holdings-api/mvnw
+- cd holdings-api && ./mvnw -q verify
+- ./mvnw -q clean package -Pprod -DskipTests
+- java -jar target/*.jar &
+- cd ../crypto-pwa && npm run e2e
+notifications:
+  webhooks:
+    on_success: always
+    on_failure: always
+    on_start: false
+after_success:
+- cd $TRAVIS_BUILD_DIR && codecov
+env:
+  matrix:
+    secure: Sr9qoZFwov73iN9zkQyz+quBoqqgOYU7mObwb9vSvi0ul07z2L4UUEiLMCIFva2E2HQXsBryIIneYZkp4CUeF9fipdiQfsXdAtILqHSoUrMYdGT0uLDnEJmF6O4FhOE8ZfAAf6Bxuj/b20TQQhme5k19TYk8vJyU3hUSFx9Gjlu7LIqSC+N/EHVeFJxT3chGcmmMt2YPJLHHnAnExVIOB8Ae1sULaG4qLfYeI0qUB4KaS2EGIQeqX1OGyN9om0jvCoIRbw6T0tKgVjDuyj7ZWEZi6OqkQIrna5XC9amG4/hw5iOllO6P1ISmi3tJYirMhUM4jkaL9LzzWKWxtWsQNtlcYAgNMb63bNMSVw7P3flwF7pTtaEki1hZIAauZfpEKtO3pMi+c2am5iPuG384Wt3Sy8zEAeAeBmvl8jkpwUD4JmPDDOfBnEEb+q2FC72BRzFqK9kF3+zIRZkzQ9uklNwG4GdLIc/ueg1juhzM+x9JxPX3FyK5OoYyo7fU14fFy95radQgF1kOS5I/wghe5z1hfvtzm4RGsy8AmhPt05sZfaZ4/MX8tJ0jDLM4a30CgRhzF7kzNuJGvWM+IEamHFqAu8iNErBhOZWoUShccDBiS0Arb38AurcPKQmNPVqCf5c333BMEkOg+fvjYjenZvo/PDBluk74uurKb911V6A=
